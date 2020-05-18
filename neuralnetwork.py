@@ -13,9 +13,13 @@ class NeuralNetwork(object):
 		return summation	
 		
 	def predict(self, inputs):
-		if (np.dot(inputs, self.weights[1:]) + self.weights[0]) > 0.0:
-			return 1
-		return -1
+		summation = np.dot(inputs, self.weights[1:]) + self.weights[0] > 0.0
+		return summation	
+		
+	def bipolar_predict(self, inputs):
+		summation = np.dot(inputs, self.weights[1:]) + self.weights[0] > 0.0
+		summation = [x if (x == 1) else -1 for x in summation]
+		return summation	
 
 	def train(self, trainingdata, targets, verbose = False):
 		trainingdata = np.array(trainingdata)
@@ -24,14 +28,17 @@ class NeuralNetwork(object):
 		rmse_cost = []			# Root Mean Squared Error
 		mae_cost = []			# Mean Absolute Error
 
-		# Binary Classification Loss Function - used to predict binary values as output (0 or 1)
+		# Binary Classification Loss Function - used to predict binary values as output (0/-1 or 1)
 		hingeloss_cost = []		# Hinge Loss Error
 		logloss_cost = []		# Log Loss (a.k.a. Binary Cross Entropy) - Sigmoid (non-linear)
 		eps = 1e-14
 		
 		for epoch in range(self.epochs): 
 			summations = self.summationfunction(trainingdata)
+			predicts = self.predict(trainingdata)
+			bipolarsummations = self.bipolar_predict(trainingdata)	
 
+			# We are using one optimization function here so it's not really using a specific loss function below
 			errors = (targets - summations)
 			self.weights[1:] += self.learning_rate * trainingdata.T.dot(errors)
 			self.weights[0] += self.learning_rate * errors.sum()
@@ -41,8 +48,8 @@ class NeuralNetwork(object):
 			rmse_cost.append(math.sqrt(np.sum((targets - summations) ** 2)/ self.ninput))
 			mae_cost.append(np.sum(abs(targets - summations)) / self.ninput)
 
-			hingeloss_cost.append(max(0 , (1 - np.sum(targets * summations))) / self.ninput) # TODO - I think I'm doing the math wrong here...
-			logloss_cost.append(-1 * np.sum(targets * np.log(np.clip(summations,eps,1-eps)) + (1 - targets) * np.log(1 - np.clip(summations,eps,1-eps))))
+			hingeloss_cost.append(max(0 , (1 - np.sum(targets * bipolarsummations))) / self.ninput) 
+			logloss_cost.append((-1 * np.sum(targets * np.log(np.clip(predicts,eps,1-eps)) + (1 - targets) * np.log(1 - np.clip(predicts,eps,1-eps))))/ self.ninput)
 
 		# Cost Functions
 		epoch = 1
